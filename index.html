@@ -1,103 +1,96 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>DVC Countdown</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>DVC Countdown · Kraken</title>
 
-  <!-- Disney-style font -->
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+<!-- Rounded, friendly sans similar to the DVC tiles -->
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&display=swap" rel="stylesheet">
 
-  <style>
-    :root {
-      --bg: #0b0d10;
-      --card: #ffffff;
-      --digit: #0f3a66;
-      --divider: #999;
-      --radius: 22px;
-    }
+<style>
+  :root{
+    --card:#ffffff;
+    --digit:#0f3a66;      /* deep navy */
+    --divider:#9aa7b4;    /* thicker gray line */
+    --radius:22px;
+    --edge-pad:8%;        /* how much background to show around the clock */
+    --inner-pad:6%;       /* padding inside the tiles block */
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
 
-    * { box-sizing: border-box; }
-    html, body {
-      height: 100%; margin: 0;
-      font-family: 'Nunito', system-ui, sans-serif;
-      background: var(--bg); color: #fff;
-      display: grid; place-items: center;
-    }
+  /* Background photo with DVC-style dark blue overlay */
+  body{
+    font-family:'Nunito', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    color:#fff;
+    display:grid; place-items:center;
+    background:
+      linear-gradient(rgba(23,36,49,.5), rgba(23,36,49,.5)),
+      url('board-walk-inn-gallery04.webp') center/cover no-repeat fixed;
+  }
 
-    .frame {
-      width: 100%; height: 100%;
-      display: grid; place-items: center;
-      padding: 6%;
-    }
+  /* Outer frame adds edge padding so the photo shows around the clock */
+  .frame{
+    width:100%; height:100%;
+    padding:var(--edge-pad);
+    display:grid; place-items:center;
+  }
+  /* Give extra inset on round LCDs so corners don’t clip */
+  .frame.safe-circle{ padding:calc(var(--edge-pad) + 6%) }
 
-    .panel {
-      width: 100%; height: 100%;
-      display: grid; place-items: center;
-      text-align: center;
-      position: relative;
-    }
+  /* The panel is the clock area itself; we keep it a bit smaller than full
+     so the background peeks around it even on square screens */
+  .panel{
+    width:100%; height:100%;
+    display:grid; place-items:center; text-align:center;
+    position:relative;
+  }
 
-    .tiles {
-      display: flex;
-      gap: min(2.6%, 16px);
-      align-items: stretch;
-      justify-content: center;
-      width: 100%; height: 100%;
-      padding: min(6%, 28px);
-    }
+  .tiles{
+    width:100%; height:100%;
+    display:flex; justify-content:center; align-items:stretch;
+    gap:min(2.6%,16px);
+    padding:var(--inner-pad);
+  }
 
-    .tile {
-      background: var(--card);
-      border-radius: var(--radius);
-      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
-      flex: 1 1 auto;
-      min-width: 0;
-      position: relative;
-      display: grid;
-      place-items: center;
-      padding: 0 0.08em;
-    }
+  .tile{
+    background:var(--card);
+    border-radius:var(--radius);
+    box-shadow:0 8px 28px rgba(0,0,0,.45);
+    position:relative;
+    flex:1 1 auto; min-width:0;
+    display:grid; place-items:center;
+    padding:0 .08em;
+  }
+  /* overlay divider line ON TOP of the digit */
+  .tile::after{
+    content:"";
+    position:absolute; left:6%; right:6%; top:50%;
+    height:3.2px; transform:translateY(-50%);
+    background:var(--divider);
+    z-index:2; opacity:.95;
+  }
 
-    .digit {
-      color: var(--digit);
-      font-weight: 900;
-      line-height: 0.86;
-      letter-spacing: -0.02em;
-      font-size: 10px; /* will be resized in JS */
-      position: relative;
-      z-index: 1;
-    }
+  .digit{
+    color:var(--digit);
+    font-weight:900;
+    line-height:.86;
+    letter-spacing:-.02em;
+    font-size:10px;   /* JS will resize this */
+    position:relative; z-index:1;
+    transform:translateY(-1px); /* subtle optical centering */
+  }
 
-    .tile::after {
-      content: "";
-      position: absolute;
-      top: 50%;
-      left: 6%;
-      right: 6%;
-      height: 3px;
-      background: var(--divider);
-      transform: translateY(-50%);
-      z-index: 2;
-      opacity: 0.9;
-    }
+  .subtitle{
+    position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
+    font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+    font-size:12px; opacity:.9;
+    text-shadow:0 2px 6px rgba(0,0,0,.45);
+  }
 
-    .subtitle {
-      position: absolute;
-      bottom: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      font-size: 12px;
-      opacity: 0.88;
-      color: #e9f1ff;
-    }
-
-    .safe-circle { padding: 10%; }
-    noscript { color: #fff; opacity: 0.8; }
-  </style>
+  noscript{color:#fff;opacity:.85}
+</style>
 </head>
 <body>
   <div class="frame" id="frame">
@@ -109,70 +102,60 @@
 
   <noscript>Enable JavaScript to see the countdown.</noscript>
 
-  <script>
-    // Set your trip date here
-    var TRIP_DATE = '2025-11-07';
+<script>
+  // ===== SET YOUR TRIP DATE (YYYY-MM-DD) =====
+  var TRIP_DATE = '2025-11-07';
+  // ===========================================
 
-    // Add safe padding for circle screens
-    try {
-      var nzxt = (window.nzxt && window.nzxt.v1) ? window.nzxt.v1 : {};
-      if (nzxt.shape === 'circle') {
-        document.getElementById('frame').classList.add('safe-circle');
-      }
-    } catch (e) { }
+  // Add extra inset for round LCDs if NZXT exposes it
+  try{
+    var nzxt = (window.nzxt && window.nzxt.v1) ? window.nzxt.v1 : {};
+    if(nzxt.shape === 'circle'){ document.getElementById('frame').className += ' safe-circle'; }
+  }catch(e){}
 
-    // Days until
-    function daysUntil(dateISO) {
-      var now = new Date();
-      var start = new Date(dateISO + 'T00:00:00');
-      var ms = start.setHours(0, 0, 0, 0) - now.setHours(0, 0, 0, 0);
-      var d = Math.ceil(ms / 86400000);
-      return (d < 0) ? 0 : d;
+  function daysUntil(dateISO){
+    var now = new Date();
+    var start = new Date(dateISO + 'T00:00:00');
+    var ms = start.setHours(0,0,0,0) - now.setHours(0,0,0,0);
+    var d = Math.ceil(ms/86400000);
+    return d < 0 ? 0 : d;
+  }
+
+  function renderCountdown(days){
+    var wrap = document.getElementById('tiles');
+    wrap.innerHTML = '';
+    var s = String(days);
+    for(var i=0;i<s.length;i++){
+      var ch = s.charAt(i);
+      if(ch<'0' || ch>'9') continue;
+      var tile = document.createElement('div'); tile.className = 'tile';
+      var digit = document.createElement('div'); digit.className = 'digit'; digit.textContent = ch;
+      tile.appendChild(digit); wrap.appendChild(tile);
     }
+    autoSizeDigits();
+  }
 
-    // Render digit tiles
-    function renderCountdown(days) {
-      var tilesWrap = document.getElementById('tiles');
-      tilesWrap.innerHTML = '';
-      var s = String(days);
-      for (var i = 0; i < s.length; i++) {
-        var ch = s.charAt(i);
-        if (ch < '0' || ch > '9') continue;
-        var tile = document.createElement('div');
-        tile.className = 'tile';
-        var digit = document.createElement('div');
-        digit.className = 'digit';
-        digit.textContent = ch;
-        tile.appendChild(digit);
-        tilesWrap.appendChild(tile);
-      }
-      autoSizeDigits();
-    }
+  function autoSizeDigits(){
+    var digits = document.querySelectorAll('.tile .digit');
+    if(!digits.length) return;
+    var container = document.getElementById('panel');
+    var w = container.clientWidth, h = container.clientHeight;
 
-    function autoSizeDigits() {
-      var digits = document.querySelectorAll('.tile .digit');
-      if (!digits.length) return;
-      var container = document.getElementById('panel');
-      var w = container.clientWidth, h = container.clientHeight;
-      var cols = digits.length;
-      var gap = Math.min(w * 0.026, 16);
-      var sidePad = Math.min(w, h) * 0.12;
-      var tileW = (w - (gap * (cols - 1)) - sidePad) / cols;
-      var tileH = h - (Math.min(w, h) * 0.22);
-      var base = Math.min(tileW, tileH);
-      var size = Math.max(12, Math.floor(base * 0.72));
-      for (var i = 0; i < digits.length; i++) {
-        digits[i].style.fontSize = size + 'px';
-      }
-    }
+    var cols = digits.length;
+    var gap = Math.min(w*0.026, 16);           // matches CSS gap heuristic
+    var sidePad = Math.min(w,h) * 0.12;        // matches --inner-pad & spacing
+    var tileW = (w - (gap*(cols-1)) - sidePad) / cols;
+    var tileH = h - (Math.min(w,h) * 0.22);    // leave space for subtitle
+    var base = Math.min(tileW, tileH);
 
-    // Init
-    var d = daysUntil(TRIP_DATE);
-    renderCountdown(d);
-    document.getElementById('subtitle').textContent = (d === 1 ? 'DAY' : 'DAYS') + ' TO DISNEY';
-    window.addEventListener('resize', function () {
-      setTimeout(autoSizeDigits, 40);
-    });
-  </script>
+    var size = Math.max(12, Math.floor(base*0.72));
+    for(var i=0;i<digits.length;i++){ digits[i].style.fontSize = size + 'px'; }
+  }
+
+  var d = daysUntil(TRIP_DATE);
+  renderCountdown(d);
+  document.getElementById('subtitle').textContent = (d===1?'DAY':'DAYS') + ' TO DISNEY';
+  window.addEventListener('resize', function(){ setTimeout(autoSizeDigits, 40); });
+</script>
 </body>
 </html>
