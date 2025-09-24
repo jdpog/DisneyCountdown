@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Disney‑Style Countdown · NZXT Kraken</title>
+<style>
+  :root{
+    --bg:#0b0d10;
+    --card:#ffffff;
+    --digit:#0f3a66;          /* deep navy */
+    --divider:#cfd6de;        /* soft gray center line */
+    --shadow:0 8px 28px rgba(0,0,0,.45);
+    --radius:22px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:var(--bg);
+    color:#fff;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    display:grid; place-items:center;
+  }
+  .frame{ width:100%; height:100%; padding:6%; display:grid; place-items:center; }
+  .panel{
+    width:100%; height:100%; display:grid; place-items:center; text-align:center;
+    border-radius:calc(var(--radius) + 6px);
+  }
+  /* ---- CONFIG VIEW ---- */
+  .config{
+    width:min(560px,92vw);
+    background:#121418; border:1px solid #1f232a; border-radius:18px; padding:20px;
+    box-shadow:var(--shadow);
+  }
+  label{opacity:.9; font-weight:600}
+  .row{display:grid; gap:10px; margin:12px 0}
+  input,button{
+    font:inherit; color:#fff; background:#1a1f26; border:1px solid #2a2f36;
+    border-radius:12px; padding:12px 14px;
+  }
+  button{font-weight:800; cursor:pointer}
+  .muted{opacity:.7; font-size:.95rem}
+  /* ---- KRAKEN VIEW ---- */
+  .tiles{
+    display:flex; gap:min(2.6%,16px);
+    align-items:stretch; justify-content:center;
+    width:100%; height:100%;
+    padding:min(6%,28px);
+  }
+  .tile{
+    background:var(--card); border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    position:relative; flex:1 1 auto; min-width:0;
+    display:grid; place-items:center; padding:0 .08em;
+  }
+  .tile::before{
+    /* center divider line */
+    content:""; position:absolute; left:8%; right:8%; top:50%;
+    height:1.5px; background:var(--divider); transform:translateY(-.75px);
+  }
+  .digit{
+    color:var(--digit); font-weight:800; line-height:0.86;
+    letter-spacing:-.02em; font-size:10px; /* will be resized in JS */
+    /* optical centering for digits */
+    transform:translateY(-1px);
+  }
+  .subtitle{
+    position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
+    font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+    font-size:12px; opacity:.88;
+    color:#e9f1ff;
+  }
+  /* round screens get a little extra inset so corners aren't cropped */
+  .safe-circle{ padding:10% }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <div class="panel" id="kraken" hidden>
+      <div class="tiles" id="tiles"></div>
+      <div class="subtitle" id="subtitle">DAYS TO DISNEY</div>
+    </div>
+
+    <div class="panel" id="config" hidden>
+      <div class="config">
+        <h2 style="margin:0 0 8px">Disney‑Style Countdown</h2>
+        <p class="muted">Pick your check‑in date. The Kraken display will show big tiles like the DVC countdown.</p>
+        <div class="row">
+          <label for="dateInput">Trip start date</label>
+          <input id="dateInput" type="date" />
+        </div>
+        <div class="row">
+          <button id="saveBtn">Save date</button>
+        </div>
+        <p class="muted" id="preview"></p>
+        <hr style="border-color:#232832;border-width:1px 0 0;margin:16px 0">
+        <p class="muted">Tip: add this URL to NZXT CAM → Lighting → Web Integration. CAM loads the device view automatically.</p>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ---------- mode detection (NZXT loads `?kraken=1` on the device) ---------- */
+const params = new URLSearchParams(location.search);
+const isKraken = params.get("kraken")==="1";
+
+/* ---------- NZXT sizing hints (if present) ---------- */
+const nzxt = (window.nzxt && window.nzxt.v1) ? window.nzxt.v1 : {};
+const deviceShape = nzxt.shape || "square";  // "square" | "circle"
+
+/* ---------- storage helpers ---------- */
+const KEY = "dvc_trip_start_iso";
+const getISO = () => localStorage.getItem(KEY);
+const setISO = (iso) => localStorage.setItem(KEY, iso);
+
+/* ---------- date math ---------- */
+function daysUntil(dateISO){
+  if(!dateISO) return null;
+  const now = new Date(); const start = new Date(dateISO + (dateISO.length<=10?"T00:00:00":""));
+  const ms = start.setHours(0,0,0,0) - now.setHours(0,0,0,0);
+  return Math.max(0, Math.ceil(ms/86400000));
+}
+
+/* ---------- render DVC‑style tiles ---------- */
+function renderTiles(value){
+  const tiles = document.getElementById("tiles");
+  tiles.innerHTML = "";
+  const str = String(value ?? "--");
+  // create one tile per character (digits only; ignore other chars)
+  for(const ch of str){
+    if(!/[0-9]/.test(ch)) continue;
+    const tile = document.createElement("div");
+    tile.className = "tile";
+    const d = document.createElement("div");
+    d.className = "digit";
+    d.textContent = ch;
+    tile.appendChild(d);
+    tiles.appendChild(tile);
+  }
+  autoSizeDigits();
+}
+
+function autoSizeDigits(){
+  const tiles = document.querySelectorAll(".tile .digit");
+  if(!tiles.length) return;
+  // compute a size that fits the shortest dimension nicely
+  const container = document.getElementById("kraken");
+  const w = container.clientWidth, h = container.clientHeight;
+  const cols = tiles.length;
+  // heuristic: each tile gets width/(cols + gaps), digit fills ~72% of the tile’s shorter side
+  const gap = Math.min(w*0.026, 16);
+  const tileW = (w - (gap*(cols-1)) - (Math.min(w,h)*0.12)) / cols; // 12% side padding total
+  const tileH = h - (Math.min(w,h)*0.22);                             // top/btm padding + label
+  const base = Math.min(tileW, tileH);
+  const size = Math.max(12, Math.floor(base*0.72));
+  tiles.forEach(el => el.style.fontSize = size + "px");
+}
+
+/
