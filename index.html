@@ -86,12 +86,30 @@
     -moz-osx-font-smoothing:grayscale;
   }
 
-  .subtitle{
-    position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
-    font-weight:600; letter-spacing:.06em; text-transform:uppercase;
-    font-size:12px; opacity:.9;
-    text-shadow:0 2px 6px rgba(0,0,0,.45);
-  }
+.subtitle {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  line-height: 1.3;
+  font-size: 13px;
+  color: #fff;
+  font-weight: 400;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+
+.subtitle .label {
+  font-weight: 400;
+  opacity: 0.92;
+}
+
+.subtitle .resort {
+  font-weight: 700;
+  color: #fff;
+  opacity: 1;
+}
+
 
   noscript{color:#fff;opacity:.85}
 </style>
@@ -100,8 +118,13 @@
   <div class="frame" id="frame">
     <div class="panel" id="panel">
       <div class="tiles" id="tiles"></div>
-       <div class="subtitle" id="days">days</div>
-      <div class="subtitle" id="subtitle">Until your vacation at: <strong>Disney's BoardWalk Villas</strong></div>
+       <div class="subtitle">
+  <div class="label" id="dayLabel">DAYS</div>
+  <div class="label">
+    Until your vacation at: <span class="resort">Disney's BoardWalk Villas</span>
+  </div>
+</div>
+
     </div>
   </div>
 
@@ -164,7 +187,7 @@
     setTimeout(function(){
       var d = daysUntil(TRIP_DATE);
       renderCountdown(d);
-      document.getElementById('subtitle').textContent = (d===1?'DAY':'DAYS') + ' TO DISNEY';
+      document.getElementById('dayLabel').textContent = (d === 1 ? 'DAY' : 'DAYS');
       scheduleMidnightTick();
     }, next - now);
   }
@@ -177,6 +200,7 @@
 </script>
 </body>
 </html>
+
 
 
 
