@@ -110,6 +110,56 @@
   opacity: 1;
 }
 
+/* enable 3D flips inside each tile */
+.tile { perspective: 600px; overflow: hidden; }
+
+/* temporary layers used during the flip */
+.flip-layer {
+  position: absolute; left: 0; right: 0; height: 50%;
+  background: var(--card); border-radius: var(--radius);
+  display: grid; place-items: center;
+  backface-visibility: hidden;
+  z-index: 3; /* above the divider, below nothing else */
+  box-shadow: 0 8px 28px rgba(0,0,0,.45);
+}
+
+/* top half flips down away from viewer */
+.flip-top {
+  top: 0;
+  transform-origin: bottom center;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* bottom half flips up toward viewer */
+.flip-bottom {
+  bottom: 0;
+  transform-origin: top center;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+/* digit in the flip layers (match your .digit) */
+.flip-text {
+  font-family: 'Jost', system-ui, sans-serif;
+  font-weight: 400;
+  font-variant-numeric: lining-nums tabular-nums;
+  color: var(--digit);
+  line-height: 1;
+  letter-spacing: 0;
+  transform: translateY(-1px);
+}
+
+/* keyframes */
+@keyframes flipTopOut {
+  0%   { transform: rotateX(0deg); }
+  100% { transform: rotateX(-90deg); }
+}
+@keyframes flipBottomIn {
+  0%   { transform: rotateX(90deg); }
+  100% { transform: rotateX(0deg); }
+}
+
 
   noscript{color:#fff;opacity:.85}
 </style>
@@ -135,11 +185,10 @@
   var TRIP_DATE = '2025-11-08';
   // ===========================================
 
-  // Add extra inset for round LCDs if NZXT exposes it
-  try{
+  try {
     var nzxt = (window.nzxt && window.nzxt.v1) ? window.nzxt.v1 : {};
-    if(nzxt.shape === 'circle'){ document.getElementById('frame').className += ' safe-circle'; }
-  }catch(e){}
+    if (nzxt.shape === 'circle') { document.getElementById('frame').className += ' safe-circle'; }
+  } catch (e) {}
 
   function daysUntil(dateISO){
     var now = new Date();
@@ -153,51 +202,122 @@
     var wrap = document.getElementById('tiles');
     wrap.innerHTML = '';
     var s = String(days);
-    for(var i=0;i<s.length;i++){
+    for (var i=0; i<s.length; i++){
       var ch = s.charAt(i);
-      if(ch<'0' || ch>'9') continue;
+      if (ch < '0' || ch > '9') continue;
       var tile = document.createElement('div'); tile.className = 'tile';
       var digit = document.createElement('div'); digit.className = 'digit'; digit.textContent = ch;
-      tile.appendChild(digit); wrap.appendChild(tile);
+      tile.appendChild(digit);
+      wrap.appendChild(tile);
     }
     autoSizeDigits();
   }
 
   function autoSizeDigits(){
-    var digits = document.querySelectorAll('.tile .digit');
+    var digits = document.querySelectorAll('.tile .digit, .flip-text');
     if(!digits.length) return;
     var container = document.getElementById('panel');
     var w = container.clientWidth, h = container.clientHeight;
 
-    var cols = digits.length;
-    var gap = Math.min(w*0.026, 16);           // matches CSS gap heuristic
-    var sidePad = Math.min(w,h) * 0.12;        // keeps nice margins
+    var cols = document.querySelectorAll('.tile').length;
+    var gap = Math.min(w*0.026, 16);
+    var sidePad = Math.min(w,h) * 0.12;
     var tileW = (w - (gap*(cols-1)) - sidePad) / cols;
-    var tileH = h - (Math.min(w,h) * 0.22);    // leave space for subtitle
+    var tileH = h - (Math.min(w,h) * 0.22);
     var base = Math.min(tileW, tileH);
 
-    var size = Math.max(12, Math.floor(base*0.84));
-    for(var i=0;i<digits.length;i++){ digits[i].style.fontSize = size + 'px'; }
+    var size = Math.max(12, Math.floor(base * 0.80)); // bigger digits
+    for (var i=0; i<digits.length; i++){ digits[i].style.fontSize = size + 'px'; }
   }
 
-  // (optional) auto-refresh at local midnight so it flips by itself
+  // ---- FLIP ANIMATION ----
+  var FLIP_MS = 650; // total duration per digit
+
+  function animateTileChange(tile, oldChar, newChar){
+    // create layers
+    var top = document.createElement('div'); top.className = 'flip-layer flip-top';
+    var bot = document.createElement('div'); bot.className = 'flip-layer flip-bottom';
+
+    var topText = document.createElement('div'); topText.className = 'flip-text'; topText.textContent = oldChar;
+    var botText = document.createElement('div'); botText.className = 'flip-text'; botText.textContent = newChar;
+
+    top.appendChild(topText);
+    bot.appendChild(botText);
+
+    // place over the tile
+    tile.appendChild(top);
+    tile.appendChild(bot);
+
+    // set starting transforms
+    top.style.animation = 'flipTopOut ' + (FLIP_MS*0.5) + 'ms ease-in forwards';
+    // start bottom a bit later so it feels sequential
+    setTimeout(function(){
+      bot.style.transform = 'rotateX(90deg)';
+      bot.style.animation = 'flipBottomIn ' + (FLIP_MS*0.5) + 'ms ease-out forwards';
+    }, FLIP_MS*0.45);
+
+    // update the base digit at the end and clean up
+    setTimeout(function(){
+      tile.querySelector('.digit').textContent = newChar;
+      tile.removeChild(top);
+      tile.removeChild(bot);
+      autoSizeDigits(); // ensure sizes if panel changed
+    }, FLIP_MS + 40);
+  }
+
+  // Animate from prev -> next; if digit count changed, just re-render.
+  function updateCountdownAnimated(prevDays, nextDays){
+    var prevStr = String(prevDays), nextStr = String(nextDays);
+    if (prevStr.length !== nextStr.length){
+      renderCountdown(nextDays); // simpler, avoids layout shift during flip
+      return;
+    }
+    // ensure tiles exist for prev state
+    if (!document.querySelectorAll('.tile').length) renderCountdown(prevDays);
+
+    // animate only digits that changed
+    var tiles = document.querySelectorAll('.tile');
+    for (var i=0; i<tiles.length; i++){
+      var oldCh = prevStr.charAt(i), newCh = nextStr.charAt(i);
+      if (oldCh === newCh) continue;
+      animateTileChange(tiles[i], oldCh, newCh);
+    }
+
+    // after the animation window, update subtitle (and remove temp layers if any remain)
+    setTimeout(function(){
+      document.getElementById('dayLabel')
+        ? document.getElementById('dayLabel').textContent = (nextDays===1?'DAY':'DAYS')
+        : (document.getElementById('subtitle').textContent = (nextDays===1?'DAY':'DAYS') + ' TO DISNEY');
+    }, FLIP_MS);
+  }
+
+  // ---- MIDNIGHT TICK ----
   function scheduleMidnightTick(){
     var now = new Date();
     var next = new Date(now); next.setHours(24,0,0,0);
     setTimeout(function(){
-      var d = daysUntil(TRIP_DATE);
-      renderCountdown(d);
-      document.getElementById('dayLabel').textContent = (d === 1 ? 'DAY' : 'DAYS');
-      scheduleMidnightTick();
+      var oldVal = currentDays;
+      currentDays = daysUntil(TRIP_DATE);
+      updateCountdownAnimated(oldVal, currentDays);
+      scheduleMidnightTick(); // schedule the next day
     }, next - now);
   }
 
-  var d = daysUntil(TRIP_DATE);
-  renderCountdown(d);
-  document.getElementById('subtitle').textContent = (d===1?'DAY':'DAYS') + ' TO DISNEY';
+  // ---- BOOT ----
+  var currentDays = daysUntil(TRIP_DATE);
+  renderCountdown(currentDays);
+
+  // if you switched to the two-line subtitle, update just the DAY(S) label
+  if (document.getElementById('dayLabel')){
+    document.getElementById('dayLabel').textContent = (currentDays===1?'DAY':'DAYS');
+  } else {
+    document.getElementById('subtitle').textContent = (currentDays===1?'DAY':'DAYS') + ' TO DISNEY';
+  }
+
   window.addEventListener('resize', function(){ setTimeout(autoSizeDigits, 40); });
   scheduleMidnightTick();
 </script>
+
 </body>
 </html>
 
